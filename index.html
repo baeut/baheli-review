@@ -181,9 +181,9 @@ const CONFIG = {
   dianpingWebUrl: 'https://m.dianping.com/shopinfo/l2JDzC1sz06sfROw',
   meituanShopId: '6_bYz0l5qeDKIjFnqTN-PgI',
   meituanWebUrl: 'https://h5.waimai.meituan.com/waimai/mindex/menu?poi_id_str=6_bYz0l5qeDKIjFnqTN-PgI',
-  apiBase: 'https://api.proma.cool/api/v1',
+  apiBase: 'https://api.proma.cool/v1',
   apiKey: 'pk_lDq7ROXSepqEWZ178R9lCX8W6CA9AumaWFc9tB0LpEi',
-  model: 'deepseek/deepseek-chat',
+  model: 'deepseek-v4-flash',
 };
 
 const MENU_FALLBACK = {
@@ -241,7 +241,6 @@ const $generateBtn = document.getElementById('generateBtn');
 const $countNum = document.getElementById('countNum');
 const $toast = document.getElementById('toast');
 
-// ====== LOAD MENU with 1s timeout ======
 async function loadMenu() {
   try {
     const ctrl = new AbortController();
@@ -249,7 +248,7 @@ async function loadMenu() {
     const resp = await fetch('menu-baheli.json', { signal: ctrl.signal });
     clearTimeout(timeout);
     if (resp.ok) { state.menu = await resp.json(); return; }
-  } catch(e) { /* fallback */ }
+  } catch(e) {}
   state.menu = MENU_FALLBACK;
 }
 
@@ -320,7 +319,6 @@ $dishGrid.addEventListener('click', e => {
   refreshAll();
 });
 
-// ====== LOADING ANIMATION ======
 function startLoading() {
   state.loadingDots = 0;
   state.loadingInterval = setInterval(() => {
@@ -333,7 +331,6 @@ function stopLoading() {
   state.loadingInterval = null;
 }
 
-// ====== GENERATE ======
 $generateBtn.addEventListener('click', () => {
   if (state.selected.size === 0 || state.phase === 'generating') return;
   handleGenerate();
@@ -399,18 +396,21 @@ async function callLLM(prompt) {
         { role:'system', content:'你是八合里的真实顾客，刚吃完潮汕牛肉火锅。用第一人称写评价，真诚自然。' },
         { role:'user', content: prompt }
       ],
-      max_tokens: 200, temperature: 0.85,
+      max_tokens: 500,
+      temperature: 0.85,
     }),
   });
-  if (!resp.ok) throw new Error(`API ${resp.status}`);
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => '');
+    throw new Error(`API ${resp.status}: ${errText}`);
+  }
   const data = await resp.json();
   return data.choices[0].message.content.trim();
 }
 
 async function autoCopy(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
     const ta = document.createElement('textarea');
     ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
     document.body.appendChild(ta); ta.select();
