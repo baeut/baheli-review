@@ -384,14 +384,14 @@ async function callLLM(prompt) {
         { role:'system', content:'你是八合里的真实顾客，刚吃完潮汕牛肉火锅。用第一人称写评价，真诚自然。' },
         { role:'user', content: prompt }
       ],
-      max_tokens: 500, temperature: 0.85,
+      max_tokens: 2000, temperature: 0.85,
       thinking: { type: 'disabled' },
     }),
   });
   if (!resp.ok) throw new Error(`API ${resp.status}`);
   const data = await resp.json();
   const msg = data.choices[0].message;
-  const text = (msg.content || msg.reasoning_content || '').trim();
+  const text = (msg.content || '').trim();
   if (!text) throw new Error('Empty response from model');
   return text;
 }
