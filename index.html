@@ -228,8 +228,6 @@ const state = {
   phase: 'idle',
   generatedText: '',
   jumpTimer: null,
-  loadingDots: 0,
-  loadingInterval: null,
 };
 
 const $reviewText = document.getElementById('reviewText');
@@ -243,10 +241,7 @@ const $toast = document.getElementById('toast');
 
 async function loadMenu() {
   try {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 1000);
-    const resp = await fetch('menu-baheli.json', { signal: ctrl.signal });
-    clearTimeout(timeout);
+    const resp = await fetch('menu-baheli.json');
     if (resp.ok) { state.menu = await resp.json(); return; }
   } catch(e) {}
   state.menu = MENU_FALLBACK;
@@ -319,16 +314,17 @@ $dishGrid.addEventListener('click', e => {
   refreshAll();
 });
 
+let loadingDots = 0, loadingInterval = null;
 function startLoading() {
-  state.loadingDots = 0;
-  state.loadingInterval = setInterval(() => {
-    state.loadingDots = (state.loadingDots + 1) % 4;
-    $generateBtn.textContent = '⏳ 生成中' + '.'.repeat(state.loadingDots);
+  loadingDots = 0;
+  loadingInterval = setInterval(() => {
+    loadingDots = (loadingDots + 1) % 4;
+    $generateBtn.textContent = '⏳ 生成中' + '.'.repeat(loadingDots);
   }, 400);
 }
 function stopLoading() {
-  clearInterval(state.loadingInterval);
-  state.loadingInterval = null;
+  clearInterval(loadingInterval);
+  loadingInterval = null;
 }
 
 $generateBtn.addEventListener('click', () => {
@@ -361,12 +357,7 @@ async function handleGenerate() {
     $platformSection.style.display = 'block';
     refreshAll();
 
-    await autoCopy(text);
-    showToast('已复制到剪贴板，2秒后跳转大众点评 ✨');
-
-    state.jumpTimer = setTimeout(() => {
-      tryJump(`dianping://shopdetail?shopid=${CONFIG.dianpingShopId}`, CONFIG.dianpingWebUrl);
-    }, 2000);
+    showToast('点击「复制文案」复制后，自动跳转大众点评 ✨');
   } catch (e) {
     console.error(e);
     state.phase = 'idle';
@@ -396,56 +387,47 @@ async function callLLM(prompt) {
         { role:'system', content:'你是八合里的真实顾客，刚吃完潮汕牛肉火锅。用第一人称写评价，真诚自然。' },
         { role:'user', content: prompt }
       ],
-      max_tokens: 500,
-      temperature: 0.85,
+      max_tokens: 500, temperature: 0.85,
     }),
   });
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => '');
-    throw new Error(`API ${resp.status}: ${errText}`);
-  }
+  if (!resp.ok) throw new Error(`API ${resp.status}`);
   const data = await resp.json();
   return data.choices[0].message.content.trim();
 }
 
-async function autoCopy(text) {
-  try { await navigator.clipboard.writeText(text); }
-  catch {
+document.getElementById('manualCopyBtn').addEventListener('click', async () => {
+  if (!state.generatedText) return;
+  try {
+    await navigator.clipboard.writeText(state.generatedText);
+  } catch {
     const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    ta.value = state.generatedText; ta.style.position = 'fixed'; ta.style.left = '-9999px';
     document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
   }
-}
-
-document.getElementById('manualCopyBtn').addEventListener('click', async () => {
-  if (!state.generatedText) return;
-  await autoCopy(state.generatedText);
-  showToast('已复制 ✨');
+  showToast('已复制！2 秒后跳转大众点评 ✨');
+  if (state.jumpTimer) clearTimeout(state.jumpTimer);
+  state.jumpTimer = setTimeout(() => {
+    window.location.href = CONFIG.dianpingWebUrl;
+  }, 2000);
 });
+
 document.getElementById('manualJumpBtn').addEventListener('click', () => {
   if (state.jumpTimer) { clearTimeout(state.jumpTimer); state.jumpTimer = null; }
-  tryJump(`dianping://shopdetail?shopid=${CONFIG.dianpingShopId}`, CONFIG.dianpingWebUrl);
+  window.location.href = CONFIG.dianpingWebUrl;
 });
 
 document.getElementById('btnDianping').addEventListener('click', e => {
   e.preventDefault();
-  tryJump(`dianping://shopdetail?shopid=${CONFIG.dianpingShopId}`, CONFIG.dianpingWebUrl);
+  window.location.href = CONFIG.dianpingWebUrl;
 });
 document.getElementById('btnMeituan').addEventListener('click', e => {
   e.preventDefault();
   if (CONFIG.meituanShopId) {
-    tryJump(`imeituan://www.meituan.com/poi/${CONFIG.meituanShopId}`, CONFIG.meituanWebUrl);
+    window.location.href = CONFIG.meituanWebUrl;
   } else { showToast('美团店铺 ID 待配置'); }
 });
 
-function tryJump(scheme, fallbackUrl) {
-  const start = Date.now();
-  window.location.href = scheme;
-  setTimeout(() => {
-    if (Date.now() - start < 2500) { window.location.href = fallbackUrl; }
-  }, 2000);
-}
 function showToast(msg) {
   $toast.textContent = msg; $toast.classList.add('show');
   clearTimeout($toast._timeout);
