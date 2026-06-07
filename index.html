@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>八合里 · 好评助手</title>
-<!-- v1.0.0 | 2026-06-07 | trigger pages deploy -->
+<!-- v1.0.1 | 2026-06-07 | add meituan shop -->
 <style>
   :root {
     --red: #D44A3A;
@@ -137,7 +137,8 @@ const CONFIG = {
   shopAddress: '科技南八路51号高新花园北区3栋NL112-115',
   dianpingShopId: 'l2JDzC1sz06sfROw',
   dianpingWebUrl: 'https://m.dianping.com/shopinfo/l2JDzC1sz06sfROw',
-  meituanShopId: '',
+  meituanShopId: '6_bYz0l5qeDKIjFnqTN-PgI',
+  meituanWebUrl: 'https://h5.waimai.meituan.com/waimai/mindex/menu?poi_id_str=6_bYz0l5qeDKIjFnqTN-PgI',
   douyinShopUrl: '',
 
   apiBase: 'https://api.proma.cool/api/v1',
@@ -321,7 +322,7 @@ document.getElementById('btnDianping').addEventListener('click', e => {
 document.getElementById('btnMeituan').addEventListener('click', e => {
   e.preventDefault();
   if (CONFIG.meituanShopId) {
-    tryJump(`imeituan://www.meituan.com/poi/${CONFIG.meituanShopId}`, `https://i.meituan.com/poi/${CONFIG.meituanShopId}`);
+    tryJump(`imeituan://www.meituan.com/poi/${CONFIG.meituanShopId}`, CONFIG.meituanWebUrl);
   } else {
     showToast('美团店铺 ID 待配置，请先用大众点评 ✨');
   }
