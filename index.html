@@ -177,9 +177,7 @@
 const CONFIG = {
   shopName: '八合里潮汕牛肉火锅（科技园店）',
   shopAddress: '科技南八路51号高新花园北区3栋NL112-115',
-  dianpingShopId: 'l2JDzC1sz06sfROw',
   dianpingWebUrl: 'https://m.dianping.com/shopinfo/l2JDzC1sz06sfROw',
-  meituanShopId: '6_bYz0l5qeDKIjFnqTN-PgI',
   meituanWebUrl: 'https://h5.waimai.meituan.com/waimai/mindex/menu?poi_id_str=6_bYz0l5qeDKIjFnqTN-PgI',
   apiBase: 'https://api.proma.cool/v1',
   apiKey: 'pk_lDq7ROXSepqEWZ178R9lCX8W6CA9AumaWFc9tB0LpEi',
@@ -356,7 +354,6 @@ async function handleGenerate() {
     $backupRow.style.display = 'flex';
     $platformSection.style.display = 'block';
     refreshAll();
-
     showToast('点击「复制文案」复制后，自动跳转大众点评 ✨');
   } catch (e) {
     console.error(e);
@@ -388,11 +385,15 @@ async function callLLM(prompt) {
         { role:'user', content: prompt }
       ],
       max_tokens: 500, temperature: 0.85,
+      thinking: { type: 'disabled' },
     }),
   });
   if (!resp.ok) throw new Error(`API ${resp.status}`);
   const data = await resp.json();
-  return data.choices[0].message.content.trim();
+  const msg = data.choices[0].message;
+  const text = (msg.content || msg.reasoning_content || '').trim();
+  if (!text) throw new Error('Empty response from model');
+  return text;
 }
 
 document.getElementById('manualCopyBtn').addEventListener('click', async () => {
@@ -423,9 +424,7 @@ document.getElementById('btnDianping').addEventListener('click', e => {
 });
 document.getElementById('btnMeituan').addEventListener('click', e => {
   e.preventDefault();
-  if (CONFIG.meituanShopId) {
-    window.location.href = CONFIG.meituanWebUrl;
-  } else { showToast('美团店铺 ID 待配置'); }
+  window.location.href = CONFIG.meituanWebUrl;
 });
 
 function showToast(msg) {
